@@ -10,6 +10,9 @@ using System.Text;
 using JWT.Serializers;
 using JWT;
 using Nancy.Json;
+using JWT.Algorithms;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
 
 namespace WebApi_JWT.Controllers
 {
@@ -32,7 +35,7 @@ namespace WebApi_JWT.Controllers
 
         [HttpPut]
         [AllowAnonymous]
-        public string TesteJwet()
+        public string TesteJwt()
         {
             var header = new Header();
 
@@ -51,105 +54,60 @@ namespace WebApi_JWT.Controllers
             };
 
 
+            
 
-           // var secret = "Secret_key-12345678";
-
-            var headerEmJson = JsonConvert.SerializeObject(header);
-
-            var payloadEmJson = JsonConvert.SerializeObject(paylod);
-
-           // var secretEmJson = JsonConvert.SerializeObject(secret);
-
-           
-            var plainTextBytes = Encoding.UTF8.GetBytes(headerEmJson);
-            var plainTextBytesP = Encoding.UTF8.GetBytes(payloadEmJson);
-            //var plainTextBytesS = Encoding.UTF8.GetBytes(secretEmJson);
-
-
-            var base64H = Convert.ToBase64String(plainTextBytes);
-            var base64P = Convert.ToBase64String(plainTextBytesP);
-         //   var base64S = Convert.ToBase64String(plainTextBytesS);
-
-            var base64 = base64H + "." + base64P;
-
-            var tokenjwt = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGFpbTEiOjAsImNsYWltMiI6ImNsYWltMi12YWx1ZSJ9.8pwBI_HtXqI3UgQHQ_rDRnSQRxFL1SR8fbQoS-5kM5s";
-
-            string Decode(string jwt)
+            var privateKey = new X509Certificate2("my-key.p12", "password", X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+            var extraHeaders = new Dictionary<string, object>
             {
+                { "partner", 0000 },
+                { "versionKey", 1 }
+            };
 
 
-                /*
-                var array = jwt.Split('.');
+            IJwtAlgorithm algorithm = new RS256Algorithm(privateKey);
+            IJsonSerializer serializer = new JsonNetSerializer();
+            IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder();
+            IJwtEncoder encoder = new JwtEncoder(algorithm, serializer, urlEncoder);
 
-               
+            var jsonWebToken = encoder.Encode(extraHeaders, paylod, privateKey.PrivateKey.ToString());
 
-                var base64EncodedBytesH = Convert.FromBase64String(array[0]);
-
-                var base64EncodedBytesP = Convert.FromBase64String(array[1]);
-
-                var jsonHeader = Encoding.UTF8.GetString(base64EncodedBytesH);
-
-                var jsonPayload = Encoding.UTF8.GetString(base64EncodedBytesP);
-
-               // var json = "{\"jwt\": [" + jsonHeader + " , " + jsonPayload + "]}";
-
-
-                JavaScriptSerializer serializador = new JavaScriptSerializer();
-
-                var json= serializador.Serialize(jsonPayload);
-
-                var jsonobj = JsonConvert.DeserializeObject(json);
-
-                
-
-                return json;
-
-
-            }
-
-            //plainTextBytes = Convert.FromBase64String(base64);
-
-
-
-            // var base64EncodedBytes = Convert.FromBase64String(jwt);
-
-            //var base64EncodedBytes = Convert.FromBase64String(jwt);
-
-            var zero = 0;
-
-            //Console.WriteLine(Encoding.UTF8.GetString(base64EncodedBytes));*/
-
-
-                 string token = jwt;
-            const string secret = "GQDstcKsx0NHjPOuXOYg5MbeJ1XT0uFiwDVvVBrk";
-
-            try
-            {
-                IJsonSerializer serializer = new JsonNetSerializer();
-                IDateTimeProvider provider = new UtcDateTimeProvider();
-                IJwtValidator validator = new JwtValidator(serializer, provider);
-                IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder();
-                IJwtDecoder decoder = new JwtDecoder(serializer, validator, urlEncoder);
-
-                var json = decoder.Decode(token, secret, verify: true);
-
-                return json;
-            }
-            catch (TokenExpiredException)
-            {
-                Console.WriteLine("Token has expired");
-            }
-            catch (SignatureVerificationException)
-            {
-                Console.WriteLine("Token has invalid signature");
-            }
-
-            // var json = decoder.Decode(base64, secret, verify: true);
-            // Console.WriteLine(json);
-
-            //return basejson;
-
-           return Decode(tokenjwt);
+            return jsonWebToken;
         }
+
+ 
+    [HttpPost]
+    [AllowAnonymous]
+    public Object FuncaoRetornoJWT(string token)
+    {
+
+        try
+        {
+            var publicKey = new X509Certificate2("my-key.p12", "password");
+            IJsonSerializer serializer = new JsonNetSerializer();
+            IDateTimeProvider provider = new UtcDateTimeProvider();
+            IJwtValidator validator = new JwtValidator(serializer, provider);
+            IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder();
+            IJwtDecoder decoder = new JwtDecoder(serializer, validator, urlEncoder);
+
+            var json = decoder.Decode(token, publicKey.ToString(), verify: true);
+
+            return json;
+        }
+        catch (TokenExpiredException)
+        {
+            Console.WriteLine("Token has expired");
+        }
+        catch (SignatureVerificationException)
+        {
+            Console.WriteLine("Token has invalid signature");
+        }
+        return "";
     }
+
+      
+    }
+
+    
+
 }
+
